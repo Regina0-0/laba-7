@@ -1,0 +1,27 @@
+FROM python:3.10-slim
+
+# Устанавливаем nginx и инструменты для сборки uwsgi
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nginx \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Ставим зависимости
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt uwsgi
+
+# Копируем проект и конфиги
+COPY app ./app
+COPY uwsgi.ini ./
+COPY wsgi.py ./
+COPY nginx.conf /etc/nginx/sites-enabled/default
+COPY entrypoint.sh /entrypoint.sh
+
+# Даем права на запуск скрипта
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 80
+
+CMD ["/entrypoint.sh"]

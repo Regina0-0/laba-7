@@ -1,0 +1,13 @@
+---
+- name: Создание namespace для приложения
+  shell: kubectl create namespace flask-stack
+  ignore_errors: yes
+
+- name: Копирование манифестов на виртуалку
+  copy:
+   
+    src: /home/regina/flaaaassk/k8s_manifests/app.yaml
+    dest: /tmp/k8s/
+
+- name: Деплой базы и приложения
+  shell: kubectl apply -f /tmp/k8s/ -n flask-stack

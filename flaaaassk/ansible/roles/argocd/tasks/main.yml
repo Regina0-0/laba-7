@@ -1,0 +1,43 @@
+---
+- name: Создание пространства имен для ArgoCD
+  shell: kubectl create namespace argocd
+  delegate_to: "{{ inventory_hostname }}"
+  ignore_errors: yes
+  register: namespace_result
+
+- name: Установка ArgoCD (Force Server Side Apply)
+  shell: kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  delegate_to: "{{ inventory_hostname }}"
+  register: install_result
+
+- name: Проверка установки ArgoCD
+  shell: kubectl get all -n argocd
+  delegate_to: "{{ inventory_hostname }}"
+  register: argocd_status
+  changed_when: false
+
+- name: Вывод статуса ArgoCD
+  debug:
+    msg: "{{ argocd_status.stdout_lines }}"
+  when: argocd_status.stdout is defined
+
+- name: Создание ArgoCD Application
+  shell: |
+    kubectl apply -f - <<EOF
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: flask-app
+      namespace: argocd
+    spec:
+      project: default
+      source:
+        repoURL: 'https://github.com/Regina0-0/laba-7'
+        path: 'flaaaassk/k8s_manifests'
+        targetRevision: HEAD
+      destination:
+        server: 'https://kubernetes.default.svc'
+        namespace: flask-stack
+      syncPolicy:
+        automated: {}
+    EOF

@@ -1,0 +1,49 @@
+---
+- name: Установка k3s (Kubernetes)
+  shell: curl -sfL https://get.k3s.io | sh -
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Ожидание запуска k3s
+  pause:
+    seconds: 15
+
+- name: Убедиться, что k3s запущен
+  systemd:
+    name: k3s
+    state: started
+    enabled: yes
+
+- name: Настройка прав для системного конфига
+  file:
+    path: /etc/rancher/k3s/k3s.yaml
+    mode: '0644'
+
+- name: Создание папки .kube для пользователя {{ ansible_user }}
+  file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+
+- name: Копирование конфига в home пользователя
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    remote_src: yes
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Исправление адреса сервера в конфиге (замена localhost на 127.0.0.1)
+  replace:
+    path: "/home/{{ ansible_user }}/.kube/config"
+    regexp: 'localhost'
+    replace: '127.0.0.1'
+
+- name: Проверка наличия KUBECONFIG в .bashrc
+  lineinfile:
+    path: "/home/{{ ansible_user }}/.bashrc"
+    line: "export KUBECONFIG=$HOME/.kube/config"
+    state: present
